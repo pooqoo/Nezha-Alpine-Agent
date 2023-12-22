@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Nezha Agent 安装路径
 NZ_AGENT_PATH="/opt/nezha/agent"
 NZ_AGENT_SERVICE="/etc/init.d/nezha-agent"
 AGENT_URL="https://github.com/naiba/nezha/releases/latest/download/nezha-agent_linux_amd64.tar.gz"
@@ -37,7 +38,7 @@ setup_service() {
 name="Nezha Agent"
 description="Nezha Monitoring Agent"
 command="${NZ_AGENT_PATH}/nezha-agent"
-command_args=""
+command_args="--host=\$NZ_HOST --port=\$NZ_PORT --secret=\$NZ_SECRET"
 command_background="yes"
 pidfile="/run/nezha-agent.pid"
 start_stop_daemon_args="--background --make-pidfile"
@@ -50,6 +51,16 @@ EOF
 
     chmod +x $NZ_AGENT_SERVICE
     rc-update add nezha-agent default
+}
+
+# 配置 Agent
+configure_agent() {
+    echo "Configuring Nezha Agent..."
+    export NZ_HOST=$1
+    export NZ_PORT=$2
+    export NZ_SECRET=$3
+
+    echo "Nezha Agent configured with host: $NZ_HOST, port: $NZ_PORT"
 }
 
 # 启动服务
@@ -74,39 +85,19 @@ uninstall_service() {
     echo "Nezha Agent uninstalled successfully."
 }
 
-# 主菜单
-main_menu() {
-    echo "Nezha Monitoring Agent Installation for Alpine Linux"
-    echo "1. Install Agent"
-    echo "2. Start Agent"
-    echo "3. Stop Agent"
-    echo "4. Uninstall Agent"
-    echo "5. Exit"
-    read -p "Please enter your choice [1-5]: " choice
-    case $choice in
-        1)
-            check_alpine
-            install_dependencies
-            install_agent
-            setup_service
-            ;;
-        2)
-            start_service
-            ;;
-        3)
-            stop_service
-            ;;
-        4)
-            uninstall_service
-            ;;
-        5)
-            exit 0
-            ;;
-        *)
-            echo "Invalid choice."
-            main_menu
-            ;;
-    esac
+# 主函数
+main() {
+    check_alpine
+    install_dependencies
+    install_agent
+    setup_service
+    if [ "$1" = "install_agent" ]; then
+        configure_agent $2 $3 $4
+        start_service
+    else
+        echo "Invalid command or insufficient arguments."
+        exit 1
+    fi
 }
 
-main_menu
+main "$@"
